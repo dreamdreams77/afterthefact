@@ -667,7 +667,8 @@ Actions['ev-open'] = async el => {
     Dialog.open({
       title: e.title, sub: `${esc(e.file.name)} · ${esc(fmtBytes(e.file.size))}`, size: 'wide',
       body: `${/^image\//.test(e.file.mime) ? `<img class="preview-img" src="${url}" alt="${esc(e.title)}">` : `<p class="small ink2">Preview isn’t available for this file type here. Download it to open it.</p>`}<div class="cluster mt12">${integrity}${e.file.sha256 ? `<span class="xs muted mono break">SHA-256 ${esc(e.file.sha256)}</span>` : ''}</div>`,
-      foot: `<a class="btn btn-ink" href="${url}" download="${esc(e.file.name)}">${ico('download', 'sm')}Download</a><button type="button" class="btn" data-dlg-close>Close</button>`,
+      foot: `<button type="button" class="btn btn-ink" data-role="dl">${ico('download', 'sm')}Download</button><button type="button" class="btn" data-dlg-close>Close</button>`,
+      onOpen: form => form.querySelector('[data-role=dl]').addEventListener('click', () => downloadBlob(e.file.name, rec.blob)),
       onClose: () => setTimeout(() => URL.revokeObjectURL(url), 2000),
     });
   } catch (err) { UI.toast('Couldn’t open the file in this browser.', 'warn'); }
@@ -766,10 +767,10 @@ Actions['obligation-edit'] = el => openObligation({ id: el.dataset.id });
 Actions['obligation-delete'] = el => { const o = findRec('obligations', el.dataset.id); const tid = commit(() => deleteRecord('obligations', o.id, `Reminder: ${o.title}`)); undoToast('Removed.', tid); };
 Actions['obligation-ics'] = el => downloadObligations([findRec('obligations', el.dataset.id)]);
 Actions['obligation-ics-all'] = () => downloadObligations(S.obligations);
-function agendaToICS(items, name) {
+async function agendaToICS(items, name) {
   const ev = items.filter(i => daysUntil(i.date) >= 0).map((i, n) => ({ uid: `${i.id || i.caseId || 'x'}-${i.kind}-${n}`, date: i.date, title: `${i.title}${i.caseId ? ' — ' + caseTitle(i.caseId) : ''}`, desc: i.certainty ? `Certainty: ${CERTAINTY[i.certainty]}` : '', alarmDays: i.kind === 'deadline' ? 2 : 0 }));
   if (!ev.length) { UI.toast('No upcoming dates to add.'); return; }
-  downloadText(name, buildICS(ev), 'text/calendar');
+  if (!await downloadText(name, buildICS(ev), 'text/calendar')) return;
   UI.toast(`${plural(ev.length, 'date')} saved as a calendar file. Open it to add them to your calendar.`, 'ok');
 }
 Actions['ics-upcoming'] = () => agendaToICS(Engine.agenda().filter(i => i.kind !== 'obligation'), 'after-the-fact-dates.ics');
@@ -812,9 +813,11 @@ async function exportBackup(includeFiles) {
       try { const rec = await IDB.getBlob(e.file.blobId); if (rec && rec.blob) files[e.file.blobId] = { name: rec.name || e.file.name, mime: rec.mime || e.file.mime, size: rec.blob.size, dataUrl: await blobToDataUrl(rec.blob) }; else missing++; } catch (err) { missing++; }
     }
   }
+  const prevExport = S.meta.lastExportAt;
   S.meta.lastExportAt = nowStamp();
   const payload = { format: 'after-the-fact-backup', formatVersion: 1, schema: APP.schema, exportedAt: S.meta.lastExportAt, includesFiles: includeFiles, data: S, files };
-  downloadText(`after-the-fact-backup-${today()}.json`, JSON.stringify(payload, null, 1), 'application/json');
+  const ok = await downloadText(`after-the-fact-backup-${today()}.json`, JSON.stringify(payload, null, 1), 'application/json');
+  if (!ok) { S.meta.lastExportAt = prevExport; return; }
   saveState(); UI.render();
   UI.toast(`Backup downloaded${includeFiles ? ` with ${plural(Object.keys(files).length, 'file')}` : ''}.${missing ? ` ${missing} file(s) weren’t found on this device.` : ''}`, 'ok');
 }

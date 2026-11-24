@@ -351,6 +351,20 @@ await test('Copy/paste backup works where downloads are blocked', async page => 
   assert((await S(page)).cases.length === 9, 'restored from pasted text');
 });
 
+await test('Hosted viewer: downloads go through the host save capability; refused formats explained', async (page, ctx) => {
+  await page.addInitScript(() => { window.__saved = []; window.claude = { use: async n => (n === 'downloads' ? { save: async ({ filename, data }) => { if (filename.endsWith('.ics')) { const e = new Error('no'); e.code = 'rejected_extension'; throw e; } window.__saved.push([filename, data.size]); return { status: 'saved' }; } } : null) }; });
+  await page.reload(); await page.waitForFunction(() => window.ATF && ATF.S);
+  await click(page, 'button[data-act="load-samples"]');
+  await go(page, '#/data');
+  await page.click('button[data-act="export"]');
+  await page.waitForTimeout(300);
+  const saved = await page.evaluate(() => window.__saved);
+  assert(saved.length === 1 && /^after-the-fact-backup-2026-11-23\.json$/.test(saved[0][0]) && saved[0][1] > 1000, 'saved via host: ' + JSON.stringify(saved));
+  await go(page, '#/dates');
+  await page.click('button[data-act="ics-upcoming"]');
+  await page.waitForSelector('.toast:has-text("can’t save .ics")');
+});
+
 await test('Malformed import is rejected gracefully; partial records are repaired', async page => {
   const path = ROOT + '/test/tmp/junk.json';
   writeFileSync(path, '{"hello": "world"}');

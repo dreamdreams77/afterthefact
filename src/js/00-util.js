@@ -99,14 +99,34 @@ async function copyText(text) {
     return ok;
   } catch (e) { return false; }
 }
-function downloadBlob(filename, blob) {
+/* Hosted viewers (e.g. a claude.ai artifact) block ordinary downloads but may
+   offer a save capability. Only window.claude.use is ever read. */
+let HostDownloads;
+function hostDownloads() {
+  if (HostDownloads !== undefined) return Promise.resolve(HostDownloads);
+  if (!(window.claude && typeof window.claude.use === 'function')) return Promise.resolve((HostDownloads = null));
+  return Promise.resolve(window.claude.use('downloads')).then(d => (HostDownloads = d || null), () => (HostDownloads = null));
+}
+async function downloadBlob(filename, blob) {
+  const host = await hostDownloads();
+  if (host) {
+    try { await host.save({ filename, data: blob }); return true; }
+    catch (e) {
+      const code = e && e.code;
+      if (code === 'declined') { UI.toast('Save cancelled.'); return false; }
+      const ext = (filename.split('.').pop() || '').toLowerCase();
+      UI.toast(code === 'rejected_extension' ? `This viewer can’t save .${ext} files. Open the app file directly to download it.` : 'This viewer couldn’t save the file. For backups, use “Copy backup text”.', 'warn');
+      return false;
+    }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return true;
 }
-function downloadText(filename, text, mime = 'text/plain') { downloadBlob(filename, new Blob([text], { type: mime + ';charset=utf-8' })); }
+function downloadText(filename, text, mime = 'text/plain') { return downloadBlob(filename, new Blob([text], { type: mime + ';charset=utf-8' })); }
 function safeFileName(s) { return String(s || 'file').replace(/[^\w.\- ]+/g, '').replace(/\s+/g, '-').slice(0, 60) || 'file'; }
 function readFileAs(file, how) {
   return new Promise((res, rej) => {

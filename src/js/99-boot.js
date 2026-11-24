@@ -79,6 +79,7 @@ async function boot() {
   let lastDay = today();
   document.addEventListener('visibilitychange', () => { if (!document.hidden && today() !== lastDay) { lastDay = today(); UI.render(); } });
   UI.render();
+  hostDownloads();
   if (S.cases.length && S.meta.lastSnapshotDay !== today() && !Runtime.saveBlocked) {
     Snapshots.take('Daily snapshot', JSON.stringify(S)).then(res => { if (res.durable) { S.meta.lastSnapshotDay = today(); saveState(); } });
   }

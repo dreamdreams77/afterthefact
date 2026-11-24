@@ -65,7 +65,7 @@ No information is invented. No real organization names, phone numbers, fee amoun
 ## 3. Testing
 
 - `test/smoke.mjs` renders every route and every tab of every example case, on desktop (1280×900) and mobile (390×844), and fails on any page or console error.
-- `test/e2e.mjs` runs 25 end-to-end scenarios in America/Los_Angeles at 22:22:
+- `test/e2e.mjs` runs 26 end-to-end scenarios in America/Los_Angeles at 22:22:
   - dates and DST
   - the intake flow and re-ranking
   - search focus
@@ -78,7 +78,7 @@ No information is invented. No real organization names, phone numbers, fee amoun
   - delete-evidence warning
   - case delete, undo and full restore
   - persistence and daily snapshots
-  - export and import with files, plus copy/paste backup for viewers that block downloads
+  - export and import with files, plus copy/paste backup and host-mediated saving for viewers that block downloads
   - v1 migration (using the original app's own sample data plus a file)
   - recovery from corrupt data
   - script injection (UI and crafted backups)
