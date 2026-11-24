@@ -820,11 +820,26 @@ async function exportBackup(includeFiles) {
 }
 Actions['export'] = () => { const cb = document.getElementById('export-files'); exportBackup(!!(cb && cb.checked && !cb.disabled)); };
 
+Actions['export-copy'] = async () => {
+  S.meta.lastExportAt = nowStamp();
+  const ok = await copyText(JSON.stringify({ format: 'after-the-fact-backup', formatVersion: 1, schema: APP.schema, exportedAt: S.meta.lastExportAt, includesFiles: false, data: S, files: {} }));
+  if (ok) { saveState(); UI.render(); }
+  UI.toast(ok ? 'Backup copied (without attached files). Paste it somewhere safe, like a note or an email to yourself.' : 'Couldn’t copy in this browser.', ok ? 'ok' : 'warn');
+};
+Actions['import-paste'] = () => Dialog.open({
+  title: 'Paste a backup', body: field('Backup text', textareaEl('text', '', 'rows="8" required class="textarea mono" placeholder="{&quot;format&quot;:&quot;after-the-fact-backup&quot;, …}"'), 'Paste the text you copied with “Copy backup text”.'),
+  foot: '<button type="button" class="btn" data-dlg-close>Cancel</button><button class="btn btn-ink" type="submit">Continue</button>',
+  onSubmit: fd => { setTimeout(() => importText(String(fd.get('text') || ''), 'Pasted backup'), 60); },
+});
 Changes['import-file'] = async el => {
   const file = el.files && el.files[0]; el.value = '';
   if (!file) return;
+  importText(await readFileAs(file, 'text'), file.name);
+};
+async function importText(text, name) {
+  const file = { name };
   let parsed;
-  try { parsed = JSON.parse(await readFileAs(file, 'text')); } catch (e) { UI.toast('That file isn’t valid JSON. Choose an AFTER THE FACT backup (.json).', 'warn'); return; }
+  try { parsed = JSON.parse(text); } catch (e) { UI.toast('That isn’t valid backup data. Choose an AFTER THE FACT backup (.json).', 'warn'); return; }
   let incoming; let files = {}; let kind;
   try {
     if (parsed && parsed.format === 'after-the-fact-backup' && parsed.data) { if (Number(parsed.schema) > APP.schema) throw new Error('This backup was made by a newer version of the app.'); incoming = normalizeState(parsed.data); files = parsed.files && typeof parsed.files === 'object' ? parsed.files : {}; kind = 'backup'; }
@@ -852,7 +867,7 @@ Changes['import-file'] = async el => {
       UI.toast(`Imported ${plural(st.cases.length, 'case')}.${failed ? ` ${failed} file(s) couldn’t be stored.` : ''}`, 'ok');
     },
   });
-};
+}
 
 Actions['snapshot-now'] = async () => { const r = await Snapshots.take('Taken by you', JSON.stringify(S)); UI.toast(r.durable ? 'Snapshot saved.' : 'Snapshot kept for this session only (file store unavailable).', 'ok'); UI.render(); };
 Actions['snapshot-download'] = async el => { const s = await Snapshots.get(el.dataset.id); if (s) downloadText(`after-the-fact-snapshot-${stampDate(s.at)}.json`, s.json, 'application/json'); };

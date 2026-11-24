@@ -337,6 +337,20 @@ await test('Injection: hostile text, references and imported ids never execute',
   assert(await page.evaluate(() => window.__pwned) === 0, 'payload executed: ' + await page.evaluate(() => window.__pwned));
 });
 
+await test('Copy/paste backup works where downloads are blocked', async page => {
+  await click(page, 'button[data-act="load-samples"]');
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const text = await page.evaluate(() => JSON.stringify({ format: 'after-the-fact-backup', schema: 2, data: ATF.S, files: {} }));
+  await go(page, '#/data');
+  await page.click('button[data-act="import-paste"]');
+  await page.fill('.dlg textarea[name="text"]', text);
+  await page.click('.dlg button:has-text("Continue")');
+  await page.waitForSelector('text=Import this backup?');
+  await page.click('.dlg button:has-text("Replace with this backup")');
+  await page.waitForTimeout(300);
+  assert((await S(page)).cases.length === 9, 'restored from pasted text');
+});
+
 await test('Malformed import is rejected gracefully; partial records are repaired', async page => {
   const path = ROOT + '/test/tmp/junk.json';
   writeFileSync(path, '{"hello": "world"}');

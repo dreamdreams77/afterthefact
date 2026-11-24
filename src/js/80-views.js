@@ -395,6 +395,7 @@ Views.data = () => {
     <p class="section-note">Browser storage can be cleared by the browser, a cleanup tool or a reinstall. A backup file is the reliable copy.${last ? ` Last export: ${esc(fmtStamp(last))}.` : ' You haven’t exported a backup yet.'}</p>
     <div class="cluster"><button class="btn btn-ink" data-act="export">${ico('download', 'sm')}Export backup</button>
       <label class="btn">${ico('upload', 'sm')}Import backup<input type="file" accept=".json,application/json" class="sr-only" data-change="import-file"></label></div>
+    <div class="cluster mt8"><button class="btn btn-sm btn-ghost" data-act="export-copy">${ico('copy', 'sm')}Copy backup text</button><button class="btn btn-sm btn-ghost" data-act="import-paste">Paste a backup</button><span class="xs muted">For browsers or viewers that block file downloads.</span></div>
     <label class="check mt12"><input type="checkbox" id="export-files" ${files.length ? 'checked' : ''} ${files.length ? '' : 'disabled'}><span class="small">Include attached files in the backup (${plural(files.length, 'file')}, ${esc(fmtBytes(fileBytes))})</span></label>
     <p class="xs muted mt8">Importing replaces what’s here. A safety snapshot is taken first, so it can be undone.</p>
   </section>
