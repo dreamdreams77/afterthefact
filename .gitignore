@@ -1,0 +1,5 @@
+dist/
+test/shots/
+test/tmp/
+tools/.bundle.js
+node_modules/
